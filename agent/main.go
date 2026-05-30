@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -65,11 +66,11 @@ func main() {
 		}
 		defer cmd.Process.Kill()
 
-		c.Stream(func(w *bufio.Writer) bool {
-			scanner := bufio.NewScanner(stdout)
-			for scanner.Scan() {
+		scanner := bufio.NewScanner(stdout)
+		c.Stream(func(w io.Writer) bool {
+			if scanner.Scan() {
 				c.SSEvent("log", scanner.Text())
-				w.Flush()
+				return true
 			}
 			return false
 		})
