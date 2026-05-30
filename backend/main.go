@@ -7,16 +7,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/oroitz-lago-ramos/minecraft-panel/internal/auth"
+	"github.com/oroitz-lago-ramos/minecraft-panel/internal/handlers"
+	"github.com/oroitz-lago-ramos/minecraft-panel/internal/minecraft"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"github.com/joho/godotenv"
 )
 
 func main() {
 	// Charger les variables d'environnement
 	godotenv.Load()
-	
+
 	// 1. Connexion MongoDB
 	mongoURI := os.Getenv("MONGO_URI")
 	if mongoURI == "" {
@@ -43,8 +45,15 @@ func main() {
 	authService := auth.NewService(db)
 	authService.EnsureAdminExists()
 
+	// Minecraft
+	mcServer := minecraft.NewServer(
+		os.Getenv("RCON_ADDR"),
+		os.Getenv("RCON_PASSWORD"),
+	)
+
 	// 3. Handlers
 	authHandler := auth.NewHandler(authService)
+	serverHandler := handlers.NewServerHandler(mcServer)
 
 	// 4. Gin + CORS
 	r := gin.Default()
@@ -70,16 +79,18 @@ func main() {
 	api := r.Group("/api")
 	api.Use(auth.AuthMiddleware())
 	{
+		// Auth
 		api.GET("/auth/me", authHandler.Me)
-		api.GET("/server/status", func(c *gin.Context) {
-			c.JSON(200, gin.H{"online": false, "players": 0})
-		})
-		api.POST("/server/start", auth.AdminOnly(), func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "démarrage en cours..."})
-		})
-		api.POST("/server/stop", auth.AdminOnly(), func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "arrêt en cours..."})
-		})
+
+		// Stats système
+		api.GET("/stats", handlers.GetStats)
+
+		// Commandes Minecraft
+		api.GET("/server/status", serverHandler.Status)
+		api.POST("/server/start", auth.AdminOnly(), serverHandler.Start)
+		api.POST("/server/stop", auth.AdminOnly(), serverHandler.Stop)
+		api.GET("/server/players", serverHandler.Players)
+		api.POST("/server/command", auth.AdminOnly(), serverHandler.SendCommand)
 	}
 
 	// 7. Lancer
