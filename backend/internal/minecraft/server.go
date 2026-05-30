@@ -1,31 +1,60 @@
 package minecraft
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
+	"net"
+	"net/http"
 	"strings"
 
 	"github.com/gorcon/rcon"
 )
 
 type ServerStatus struct {
-	Online  bool   `json:"online"`
-	Players int    `json:"players"`
-	MaxPlayers int `json:"maxPlayers"`
-	Version string `json:"version"`
-	Uptime  string `json:"uptime"`
+	Online     bool   `json:"online"`
+	Players    int    `json:"players"`
+	MaxPlayers int    `json:"maxPlayers"`
+	Version    string `json:"version"`
+	Uptime     string `json:"uptime"`
 }
 
 type Server struct {
 	rconAddr     string
 	rconPassword string
+	agentClient  *http.Client
 }
 
 func NewServer(rconAddr, rconPassword string) *Server {
+	// Client HTTP qui parle via socket Unix
+	agentClient := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return net.Dial("unix", "/tmp/mc-agent.sock")
+			},
+		},
+	}
+
 	return &Server{
 		rconAddr:     rconAddr,
 		rconPassword: rconPassword,
+		agentClient:  agentClient,
 	}
+}
+
+func (s *Server) callAgent(method, path string) error {
+	req, err := http.NewRequest(method, "http://agent"+path, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.agentClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("agent inaccessible: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("agent error: %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func (s *Server) IsOnline() bool {
@@ -45,13 +74,11 @@ func (s *Server) GetStatus() (*ServerStatus, error) {
 		return status, nil
 	}
 
-	// Récupérer le nombre de joueurs via RCON
 	response, err := s.SendCommand("list")
 	if err != nil {
 		return status, nil
 	}
 
-	// Parser "There are 2 of a max of 20 players online"
 	var current, max int
 	fmt.Sscanf(response, "There are %d of a max of %d players online", &current, &max)
 	status.Players = current
@@ -61,13 +88,11 @@ func (s *Server) GetStatus() (*ServerStatus, error) {
 }
 
 func (s *Server) Start() error {
-	cmd := exec.Command("sudo", "systemctl", "start", "minecraft")
-	return cmd.Run()
+	return s.callAgent("POST", "/start")
 }
 
 func (s *Server) Stop() error {
-	cmd := exec.Command("sudo", "systemctl", "stop", "minecraft")
-	return cmd.Run()
+	return s.callAgent("POST", "/stop")
 }
 
 func (s *Server) GetPlayers() ([]string, error) {
@@ -76,7 +101,6 @@ func (s *Server) GetPlayers() ([]string, error) {
 		return nil, err
 	}
 
-	// Parser la liste des joueurs
 	if !strings.Contains(response, ":") {
 		return []string{}, nil
 	}
