@@ -9,23 +9,28 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Chercher le token dans le header OU dans l'URL
+		tokenString := ""
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "header Authorization manquant"})
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		} else {
+			// Pour WebSocket — token dans l'URL
+			tokenString = c.Query("token")
+		}
+
+		if tokenString == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token manquant"})
 			c.Abort()
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "format invalide, attendu: Bearer <token>"})
-			c.Abort()
-			return
-		}
-
-		claims, err := ValidateJWT(parts[1])
+		claims, err := ValidateJWT(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token invalide ou expiré"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token invalide"})
 			c.Abort()
 			return
 		}
