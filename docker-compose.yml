@@ -38,6 +38,8 @@ services:
       - "traefik.http.routers.backend.entrypoints=websecure"
       - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
       - "traefik.http.services.backend.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.ws.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.backend.middlewares=ws"
 
   mongodb:
     image: mongo:7
