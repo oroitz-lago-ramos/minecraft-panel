@@ -46,7 +46,13 @@ func (h *ServerHandler) Players(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, players)
+
+	// Convertir []string en []map pour le frontend
+	result := make([]map[string]string, len(players))
+	for i, name := range players {
+		result[i] = map[string]string{"name": name}
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *ServerHandler) SendCommand(c *gin.Context) {
