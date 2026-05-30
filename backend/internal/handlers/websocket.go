@@ -36,7 +36,7 @@ func (h *WSHandler) Console(c *gin.Context) {
 	defer conn.Close()
 
 	// 2. Lire les logs Minecraft en temps réel
-	cmd := exec.Command("journalctl", "-u", "minecraft", "-f", "--no-pager")
+	cmd := exec.Command("tail", "-f", "-n", "50", "/home/deploy/minecraft/logs/latest.log")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("Erreur lecture logs"))

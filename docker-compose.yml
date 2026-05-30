@@ -32,6 +32,7 @@ services:
     volumes:
       - /run/systemd/journal/socket:/run/systemd/journal/socket
       - /run/log/journal:/run/log/journal:ro
+      - /home/deploy/minecraft/logs:/minecraft/logs:ro
     build: ./backend
     restart: unless-stopped
     env_file: .env.prod
