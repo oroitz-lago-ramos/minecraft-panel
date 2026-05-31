@@ -24,7 +24,7 @@ jobs:
           tags: oroitzlr/mc-frontend:latest
           build-args: |
             VITE_API_URL=https://mc-api.oroitzlagoramos.com
-
+            VITE_WS_URL=wss://mc-api.oroitzlagoramos.com
       - name: Build & Push backend
         uses: docker/build-push-action@v5
         with:
