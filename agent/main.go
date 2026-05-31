@@ -18,13 +18,15 @@ import (
 )
 
 const propsFile = "/home/deploy/minecraft/server.properties"
+const worldsDir = "/home/deploy/minecraft/worlds"
+const mcDir = "/home/deploy/minecraft"
+const activeFile = "/home/deploy/minecraft/worlds/.active"
 
 func formatUptime(totalSeconds int64) string {
 	days := totalSeconds / 86400
 	hours := (totalSeconds % 86400) / 3600
 	minutes := (totalSeconds % 3600) / 60
 	seconds := totalSeconds % 60
-
 	if days > 0 {
 		return fmt.Sprintf("%dj %dh %dmin", days, hours, minutes)
 	}
@@ -67,30 +69,15 @@ func getMinecraftUptime() string {
 }
 
 func getActiveWorld() string {
-	data, err := os.ReadFile(propsFile)
+	data, err := os.ReadFile(activeFile)
 	if err != nil {
 		return "survival"
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.HasPrefix(line, "level-name=") {
-			return strings.TrimPrefix(line, "level-name=")
-		}
-	}
-	return "survival"
+	return strings.TrimSpace(string(data))
 }
 
 func setActiveWorld(name string) {
-	data, err := os.ReadFile(propsFile)
-	if err != nil {
-		return
-	}
-	lines := strings.Split(string(data), "\n")
-	for i, line := range lines {
-		if strings.HasPrefix(line, "level-name=") {
-			lines[i] = "level-name=" + name
-		}
-	}
-	os.WriteFile(propsFile, []byte(strings.Join(lines, "\n")), 0644)
+	os.WriteFile(activeFile, []byte(name), 0644)
 }
 
 func copyDir(src, dst string) error {
@@ -161,7 +148,6 @@ func main() {
 			return
 		}
 		defer cmd.Process.Kill()
-
 		scanner := bufio.NewScanner(stdout)
 		c.Stream(func(w io.Writer) bool {
 			if scanner.Scan() {
@@ -173,14 +159,12 @@ func main() {
 	})
 
 	r.GET("/worlds", func(c *gin.Context) {
-		entries, err := os.ReadDir("/home/deploy/minecraft/worlds")
+		entries, err := os.ReadDir(worldsDir)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-
 		active := getActiveWorld()
-
 		worlds := []gin.H{}
 		for _, e := range entries {
 			if e.IsDir() {
@@ -202,10 +186,7 @@ func main() {
 			return
 		}
 
-		baseDir := "/home/deploy/minecraft/worlds"
-		mcDir := "/home/deploy/minecraft"
-		target := filepath.Join(baseDir, body.Name)
-
+		target := filepath.Join(worldsDir, body.Name)
 		if _, err := os.Stat(target); os.IsNotExist(err) {
 			c.JSON(404, gin.H{"error": "map introuvable"})
 			return
@@ -215,10 +196,10 @@ func main() {
 		exec.Command("systemctl", "stop", "minecraft").Run()
 		time.Sleep(3 * time.Second)
 
-		// 2. Sauvegarde la map active
+		// 2. Sauvegarde la map active dans worlds/
 		active := getActiveWorld()
 		if active != "" && active != body.Name {
-			saveDir := filepath.Join(baseDir, active)
+			saveDir := filepath.Join(worldsDir, active)
 			os.MkdirAll(saveDir, 0755)
 			for _, dir := range []string{"world", "world_nether", "world_the_end"} {
 				src := filepath.Join(mcDir, dir)
@@ -229,14 +210,17 @@ func main() {
 			}
 		}
 
-		// 3. Copie la nouvelle map
+		// 3. Copie la nouvelle map vers world/ world_nether/ world_the_end/
 		for _, dir := range []string{"world", "world_nether", "world_the_end"} {
 			src := filepath.Join(target, dir)
 			dst := filepath.Join(mcDir, dir)
-			copyDir(src, dst)
+			os.RemoveAll(dst)
+			if _, err := os.Stat(src); err == nil {
+				exec.Command("cp", "-r", src, dst).Run()
+			}
 		}
 
-		// 4. Met à jour server.properties
+		// 4. Met à jour .active
 		setActiveWorld(body.Name)
 
 		// 5. Restart serveur
@@ -251,40 +235,33 @@ func main() {
 			c.JSON(400, gin.H{"error": "fichier requis"})
 			return
 		}
-
 		name := strings.TrimSuffix(file.Filename, ".zip")
-		destDir := filepath.Join("/home/deploy/minecraft/worlds", name)
+		destDir := filepath.Join(worldsDir, name)
 		zipPath := destDir + ".zip"
-
 		if err := c.SaveUploadedFile(file, zipPath); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-
 		os.MkdirAll(destDir, 0755)
 		if err := unzip(zipPath, destDir); err != nil {
 			c.JSON(500, gin.H{"error": "extraction échouée: " + err.Error()})
 			return
 		}
 		os.Remove(zipPath)
-
 		c.JSON(200, gin.H{"status": "uploaded", "world": name})
 	})
 
 	r.DELETE("/worlds/:name", func(c *gin.Context) {
 		name := c.Param("name")
-
 		if name == getActiveWorld() {
 			c.JSON(400, gin.H{"error": "impossible de supprimer la map active"})
 			return
 		}
-
-		target := filepath.Join("/home/deploy/minecraft/worlds", name)
+		target := filepath.Join(worldsDir, name)
 		if _, err := os.Stat(target); os.IsNotExist(err) {
 			c.JSON(404, gin.H{"error": "map introuvable"})
 			return
 		}
-
 		if err := os.RemoveAll(target); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
@@ -294,23 +271,19 @@ func main() {
 
 	r.GET("/worlds/:name/backup", func(c *gin.Context) {
 		name := c.Param("name")
-		worldDir := filepath.Join("/home/deploy/minecraft/worlds", name)
-
+		worldDir := filepath.Join(worldsDir, name)
 		if _, err := os.Stat(worldDir); os.IsNotExist(err) {
 			c.JSON(404, gin.H{"error": "map introuvable"})
 			return
 		}
-
 		zipPath := filepath.Join("/tmp", name+".zip")
 		os.Remove(zipPath)
-
 		cmd := exec.Command("zip", "-r", zipPath, name)
-		cmd.Dir = "/home/deploy/minecraft/worlds"
+		cmd.Dir = worldsDir
 		if err := cmd.Run(); err != nil {
 			c.JSON(500, gin.H{"error": "zip échoué: " + err.Error()})
 			return
 		}
-
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", name))
 		c.Header("Content-Type", "application/zip")
 		c.File(zipPath)
@@ -319,13 +292,11 @@ func main() {
 
 	socketPath := "/tmp/mc-agent.sock"
 	os.Remove(socketPath)
-
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
 		log.Fatalf("❌ Socket: %v", err)
 	}
 	os.Chmod(socketPath, 0666)
-
 	log.Println("✅ mc-agent démarré sur", socketPath)
 	http.Serve(listener, r)
 }
