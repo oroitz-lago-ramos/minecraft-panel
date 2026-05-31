@@ -94,3 +94,47 @@ func (h *ServerHandler) Uptime(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, uptime)
 }
+
+func (h *ServerHandler) GetWorlds(c *gin.Context) {
+	worlds, err := h.mc.GetWorlds()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, worlds)
+}
+
+func (h *ServerHandler) SwitchWorld(c *gin.Context) {
+	var body struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "nom requis"})
+		return
+	}
+	if err := h.mc.SwitchWorld(body.Name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "switched", "world": body.Name})
+}
+
+func (h *ServerHandler) UploadWorld(c *gin.Context) {
+	file, err := c.FormFile("world")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "fichier requis"})
+		return
+	}
+	f, err := file.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer f.Close()
+
+	if err := h.mc.UploadWorld(file.Filename, f); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "uploaded", "world": file.Filename})
+}
