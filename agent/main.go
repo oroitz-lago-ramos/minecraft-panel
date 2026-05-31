@@ -206,17 +206,19 @@ func main() {
 				dst := filepath.Join(saveDir, dir)
 				os.RemoveAll(dst)
 				exec.Command("cp", "-r", src, dst).Run()
+				exec.Command("chown", "-R", "deploy:deploy", dst).Run()
 				os.RemoveAll(src)
 			}
 		}
 
-		// 3. Copie la nouvelle map vers world/ world_nether/ world_the_end/
+		// 3. Copie la nouvelle map
 		for _, dir := range []string{"world", "world_nether", "world_the_end"} {
 			src := filepath.Join(target, dir)
 			dst := filepath.Join(mcDir, dir)
 			os.RemoveAll(dst)
 			if _, err := os.Stat(src); err == nil {
 				exec.Command("cp", "-r", src, dst).Run()
+				exec.Command("chown", "-R", "deploy:deploy", dst).Run()
 			}
 		}
 
