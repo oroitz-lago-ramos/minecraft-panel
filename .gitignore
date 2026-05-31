@@ -7,3 +7,4 @@ world/
 .env.*
 **/.env
 **/.env.*
+agent/mc-agent
