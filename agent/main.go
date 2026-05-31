@@ -219,7 +219,6 @@ func main() {
 		if active != "" && active != body.Name {
 			saveDir := filepath.Join(baseDir, active)
 			os.MkdirAll(saveDir, 0755)
-			// Remplace os.Rename par cp + rm
 			for _, dir := range []string{"world", "world_nether", "world_the_end"} {
 				src := filepath.Join(mcDir, dir)
 				dst := filepath.Join(saveDir, dir)
@@ -267,6 +266,52 @@ func main() {
 		os.Remove(zipPath)
 
 		c.JSON(200, gin.H{"status": "uploaded", "world": name})
+	})
+
+	r.DELETE("/worlds/:name", func(c *gin.Context) {
+		name := c.Param("name")
+
+		if name == getActiveWorld() {
+			c.JSON(400, gin.H{"error": "impossible de supprimer la map active"})
+			return
+		}
+
+		target := filepath.Join("/home/deploy/minecraft/worlds", name)
+		if _, err := os.Stat(target); os.IsNotExist(err) {
+			c.JSON(404, gin.H{"error": "map introuvable"})
+			return
+		}
+
+		if err := os.RemoveAll(target); err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"status": "deleted", "world": name})
+	})
+
+	r.GET("/worlds/:name/backup", func(c *gin.Context) {
+		name := c.Param("name")
+		worldDir := filepath.Join("/home/deploy/minecraft/worlds", name)
+
+		if _, err := os.Stat(worldDir); os.IsNotExist(err) {
+			c.JSON(404, gin.H{"error": "map introuvable"})
+			return
+		}
+
+		zipPath := filepath.Join("/tmp", name+".zip")
+		os.Remove(zipPath)
+
+		cmd := exec.Command("zip", "-r", zipPath, name)
+		cmd.Dir = "/home/deploy/minecraft/worlds"
+		if err := cmd.Run(); err != nil {
+			c.JSON(500, gin.H{"error": "zip échoué: " + err.Error()})
+			return
+		}
+
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", name))
+		c.Header("Content-Type", "application/zip")
+		c.File(zipPath)
+		defer os.Remove(zipPath)
 	})
 
 	socketPath := "/tmp/mc-agent.sock"

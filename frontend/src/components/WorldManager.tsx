@@ -32,6 +32,7 @@ export function WorldManager({ onSwitch }: Props) {
         try {
             await switchWorld(name)
             setMessage({ text: `✅ Map "${name}" activée — serveur en cours de redémarrage...`, ok: true })
+            setTimeout(() => setMessage(null), 5000)
             await load()
             onSwitch()
         } catch (err) {
@@ -49,6 +50,7 @@ export function WorldManager({ onSwitch }: Props) {
         try {
             await uploadWorld(file)
             setMessage({ text: `✅ Map "${file.name}" uploadée !`, ok: true })
+            setTimeout(() => setMessage(null), 5000)
             await load()
         } catch (err) {
             setMessage({ text: `❌ Erreur lors de l'upload`, ok: false })
