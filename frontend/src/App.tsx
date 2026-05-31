@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { fetchStatus, fetchPlayers, fetchStats, login } from './api/server'
+import { fetchStatus, fetchPlayers, fetchStats, fetchUptime, login } from './api/server'
 import { ServerCard } from './components/ServerCard'
 import { StatsBar } from './components/StatsBar'
 import { PlayerList } from './components/PlayerList'
 import { Console } from './components/Console'
-import type { ServerStatus, Player, SystemStats } from './types'
+import type { ServerStatus, Player, SystemStats, Uptime } from './types'
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'))
@@ -15,18 +15,21 @@ export default function App() {
   const [status, setStatus] = useState<ServerStatus | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [stats, setStats] = useState<SystemStats | null>(null)
+  const [uptime, setUptime] = useState<Uptime | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchAll = async () => {
     try {
-      const [s, p, st] = await Promise.all([
+      const [s, p, st, up] = await Promise.all([
         fetchStatus(),
         fetchPlayers(),
         fetchStats(),
+        fetchUptime(),
       ])
       setStatus(s)
       setPlayers(p)
       setStats(st)
+      setUptime(up)
     } catch (err) {
       console.error(err)
     } finally {
@@ -58,7 +61,6 @@ export default function App() {
     setToken(null)
   }
 
-  // Page de login
   if (!token) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -91,7 +93,6 @@ export default function App() {
     )
   }
 
-  // Dashboard
   return (
     <div className="wrap">
       <header className="header">
@@ -112,7 +113,7 @@ export default function App() {
         </button>
       </header>
 
-      <ServerCard status={status} loading={loading} onRefresh={fetchAll} />
+      <ServerCard status={status} loading={loading} onRefresh={fetchAll} uptime={uptime} />
       <StatsBar stats={stats} />
 
       <section className="main">

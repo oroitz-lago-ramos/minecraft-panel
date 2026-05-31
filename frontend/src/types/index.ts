@@ -18,6 +18,11 @@ export interface SystemStats {
   uptime: number
 }
 
+export interface Uptime {
+  vps_uptime: string
+  minecraft_uptime: string
+}
+
 export interface ConsoleMessage {
   timestamp: string
   level: 'INFO' | 'WARN' | 'ERROR'

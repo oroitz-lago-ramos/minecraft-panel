@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { startServer, stopServer } from '../api/server'
-import type { ServerStatus } from '../types'
+import type { ServerStatus, Uptime } from '../types'
 
 interface Props {
     status: ServerStatus | null
     loading: boolean
     onRefresh: () => void
+    uptime: Uptime | null
 }
 
-export function ServerCard({ status, loading, onRefresh }: Props) {
+export function ServerCard({ status, loading, onRefresh, uptime }: Props) {
     const [acting, setActing] = useState(false)
 
     const handleStart = async () => {
@@ -35,12 +36,6 @@ export function ServerCard({ status, loading, onRefresh }: Props) {
         }
     }
 
-    const formatUptime = (seconds: number) => {
-        const h = Math.floor(seconds / 3600)
-        const m = Math.floor((seconds % 3600) / 60)
-        return `${h}h ${m}min`
-    }
-
     if (loading) return <div style={{ color: '#a9a39a', padding: '18px' }}>Chargement...</div>
 
     const online = status?.online ?? false
@@ -57,10 +52,13 @@ export function ServerCard({ status, loading, onRefresh }: Props) {
                     <span id="statusBadge">{online ? 'En ligne' : 'Hors ligne'}</span>
                 </div>
                 <div id="uptime" className="tab">
-                    {status?.uptime ? formatUptime(status.uptime) : '--'}
+                    {uptime?.minecraft_uptime ?? '--'}
                 </div>
                 <div id="uptimeLabel">
-                    {online ? 'Serveur actif' : 'Serveur arrêté'}
+                    {online ? 'Minecraft actif' : 'Serveur arrêté'}
+                </div>
+                <div style={{ fontSize: '14px', color: 'var(--sub)', marginTop: '6px' }}>
+                    VPS : {uptime?.vps_uptime ?? '--'}
                 </div>
             </div>
 

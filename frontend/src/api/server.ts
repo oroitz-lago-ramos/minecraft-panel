@@ -1,4 +1,4 @@
-import type { ServerStatus, Player, SystemStats } from '../types'
+import type { ServerStatus, Player, SystemStats, Uptime } from '../types'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -33,6 +33,12 @@ export const fetchPlayers = async (): Promise<Player[]> => {
 export const fetchStats = async (): Promise<SystemStats> => {
   const res = await fetch(`${BASE_URL}/api/stats`, { headers: authHeaders() })
   if (!res.ok) throw new Error('Erreur stats')
+  return res.json()
+}
+
+export const fetchUptime = async (): Promise<Uptime> => {
+  const res = await fetch(`${BASE_URL}/api/server/uptime`, { headers: authHeaders() })
+  if (!res.ok) throw new Error('Erreur uptime')
   return res.json()
 }
 
