@@ -94,6 +94,7 @@ func setActiveWorld(name string) {
 }
 
 func copyDir(src, dst string) error {
+	os.RemoveAll(dst)
 	return exec.Command("cp", "-r", src, dst).Run()
 }
 
@@ -229,9 +230,11 @@ func main() {
 		}
 
 		// 3. Copie la nouvelle map
-		copyDir(filepath.Join(target, "world"), filepath.Join(mcDir, "world"))
-		copyDir(filepath.Join(target, "world_nether"), filepath.Join(mcDir, "world_nether"))
-		copyDir(filepath.Join(target, "world_the_end"), filepath.Join(mcDir, "world_the_end"))
+		for _, dir := range []string{"world", "world_nether", "world_the_end"} {
+			src := filepath.Join(target, dir)
+			dst := filepath.Join(mcDir, dir)
+			copyDir(src, dst)
+		}
 
 		// 4. Met à jour server.properties
 		setActiveWorld(body.Name)
