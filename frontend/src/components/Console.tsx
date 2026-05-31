@@ -1,13 +1,15 @@
 import { useRef, useEffect, useState } from 'react'
 import { useWebSocket } from '../hooks/useWebSocket'
 
+type Filter = 'ALL' | 'INFO' | 'WARN' | 'ERROR'
+
 export function Console() {
     const { messages, connected, sendMessage } = useWebSocket()
     const [input, setInput] = useState('')
     const [autoScroll, setAutoScroll] = useState(true)
+    const [filter, setFilter] = useState<Filter>('ALL')
     const consoleRef = useRef<HTMLDivElement>(null)
 
-    // Auto-scroll vers le bas quand nouveau message
     useEffect(() => {
         if (autoScroll && consoleRef.current) {
             consoleRef.current.scrollTop = consoleRef.current.scrollHeight
@@ -21,22 +23,52 @@ export function Console() {
         setInput('')
     }
 
-    const getLevel = (line: string) => {
+    const getLevel = (line: string): Filter => {
         if (line.includes('ERROR')) return 'ERROR'
         if (line.includes('WARN')) return 'WARN'
         return 'INFO'
     }
 
     const clearConsole = () => {
-        // On vide juste l'affichage local
-        consoleRef.current!.innerHTML = ''
+        if (consoleRef.current) consoleRef.current.innerHTML = ''
     }
+
+    const filteredMessages = messages.filter((msg: string) =>
+        filter === 'ALL' ? true : getLevel(msg) === filter
+    )
+
+    const filterBtn = (label: Filter, color: string) => (
+        <button
+            onClick={() => setFilter(label)}
+            style={{
+                fontFamily: '"VT323", monospace',
+                fontSize: '16px',
+                padding: '3px 10px 1px',
+                border: 'none',
+                cursor: 'pointer',
+                color: filter === label ? '#000' : color,
+                background: filter === label ? color : 'transparent',
+                boxShadow: filter === label
+                    ? 'inset 2px 2px 0 rgba(255,255,255,0.3), inset -2px -2px 0 rgba(0,0,0,0.4)'
+                    : 'none',
+            }}
+        >
+            {label}
+        </button>
+    )
 
     return (
         <div className="panel console-panel">
             <div className="console-head">
                 <h2>Console</h2>
                 <div className="opts">
+                    {/* Filtres */}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        {filterBtn('ALL', '#a9a39a')}
+                        {filterBtn('INFO', '#cfcfcf')}
+                        {filterBtn('WARN', '#f0a821')}
+                        {filterBtn('ERROR', '#d24b3e')}
+                    </div>
                     <label>
                         <input
                             type="checkbox"
@@ -53,7 +85,7 @@ export function Console() {
             </div>
 
             <div id="console" ref={consoleRef}>
-                {messages.map((msg: string, i: number) => (
+                {filteredMessages.map((msg: string, i: number) => (
                     <div key={i} className="cl-line" data-level={getLevel(msg)}>
                         <span className="cl-msg">{msg}</span>
                     </div>
