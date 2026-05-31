@@ -85,3 +85,12 @@ func (h *ServerHandler) SendCommand(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"response": response})
 }
+
+func (h *ServerHandler) Uptime(c *gin.Context) {
+	uptime, err := h.mc.GetUptime()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, uptime)
+}

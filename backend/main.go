@@ -89,6 +89,7 @@ func main() {
 
 		// Commandes Minecraft
 		api.GET("/server/status", serverHandler.Status)
+		api.GET("/server/uptime", serverHandler.Uptime)
 		api.POST("/server/start", auth.AdminOnly(), serverHandler.Start)
 		api.POST("/server/stop", auth.AdminOnly(), serverHandler.Stop)
 		api.GET("/server/players", serverHandler.Players)

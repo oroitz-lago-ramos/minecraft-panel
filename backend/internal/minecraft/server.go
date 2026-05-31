@@ -2,6 +2,7 @@ package minecraft
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -93,6 +94,24 @@ func (s *Server) Start() error {
 
 func (s *Server) Stop() error {
 	return s.callAgent("POST", "/stop")
+}
+
+func (s *Server) GetUptime() (map[string]string, error) {
+	req, err := http.NewRequest("GET", "http://agent/uptime", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.agentClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("agent inaccessible: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (s *Server) GetPlayers() ([]string, error) {
