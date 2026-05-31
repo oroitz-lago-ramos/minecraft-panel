@@ -178,6 +178,38 @@ func (s *Server) UploadWorld(filename string, file io.Reader) error {
 	return nil
 }
 
+func (s *Server) DeleteWorld(name string) error {
+	req, err := http.NewRequest("DELETE", "http://agent/worlds/"+name, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.agentClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("agent inaccessible: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("agent error: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (s *Server) BackupWorld(name string, c interface{ Header(string, string); File(string) }) error {
+	req, err := http.NewRequest("GET", "http://agent/worlds/"+name+"/backup", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := s.agentClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("agent inaccessible: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("agent error: %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (s *Server) GetPlayers() ([]string, error) {
 	response, err := s.SendCommand("list")
 	if err != nil {
@@ -212,4 +244,8 @@ func (s *Server) SendCommand(command string) (string, error) {
 		return "", fmt.Errorf("erreur RCON: %v", err)
 	}
 	return response, nil
+}
+
+func (s *Server) AgentClient() *http.Client {
+	return s.agentClient
 }

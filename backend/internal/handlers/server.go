@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -137,4 +139,30 @@ func (h *ServerHandler) UploadWorld(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "uploaded", "world": file.Filename})
+}
+
+func (h *ServerHandler) DeleteWorld(c *gin.Context) {
+	name := c.Param("name")
+	if err := h.mc.DeleteWorld(name); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "deleted", "world": name})
+}
+
+func (h *ServerHandler) BackupWorld(c *gin.Context) {
+	name := c.Param("name")
+
+	// Appelle l'agent et stream la réponse directement au client
+	req, _ := http.NewRequest("GET", "http://agent/worlds/"+name+"/backup", nil)
+	resp, err := h.mc.AgentClient().Do(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", name))
+	c.Header("Content-Type", "application/zip")
+	io.Copy(c.Writer, resp.Body)
 }

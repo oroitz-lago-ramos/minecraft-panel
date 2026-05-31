@@ -97,6 +97,8 @@ func main() {
 		api.GET("/server/worlds", serverHandler.GetWorlds)
 		api.POST("/server/worlds/switch", auth.AdminOnly(), serverHandler.SwitchWorld)
 		api.POST("/server/worlds/upload", auth.AdminOnly(), serverHandler.UploadWorld)
+		api.DELETE("/server/worlds/:name", auth.AdminOnly(), serverHandler.DeleteWorld)
+		api.GET("/server/worlds/:name/backup", auth.AdminOnly(), serverHandler.BackupWorld)
 		api.GET("/ws/console", wsHandler.Console)
 	}
 
