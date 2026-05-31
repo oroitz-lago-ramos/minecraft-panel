@@ -94,3 +94,25 @@ export const uploadWorld = async (file: File): Promise<void> => {
     })
     if (!res.ok) throw new Error('Erreur upload')
 }
+
+export const deleteWorld = async (name: string): Promise<void> => {
+    const res = await fetch(`${BASE_URL}/api/server/worlds/${name}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+    })
+    if (!res.ok) throw new Error('Erreur delete')
+}
+
+export const backupWorld = async (name: string): Promise<void> => {
+    const res = await fetch(`${BASE_URL}/api/server/worlds/${name}/backup`, {
+        headers: authHeaders(),
+    })
+    if (!res.ok) throw new Error('Erreur backup')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${name}.zip`
+    a.click()
+    URL.revokeObjectURL(url)
+}

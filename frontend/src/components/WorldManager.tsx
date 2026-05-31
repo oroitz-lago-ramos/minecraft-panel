@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { World } from '../types'
-import { fetchWorlds, switchWorld, uploadWorld } from '../api/server'
+import { fetchWorlds, switchWorld, uploadWorld, deleteWorld, backupWorld } from '../api/server'
 
 interface Props {
     onSwitch: () => void
@@ -11,7 +11,14 @@ export function WorldManager({ onSwitch }: Props) {
     const [loading, setLoading] = useState(true)
     const [switching, setSwitching] = useState<string | null>(null)
     const [uploading, setUploading] = useState(false)
+    const [deleting, setDeleting] = useState<string | null>(null)
+    const [backing, setBacking] = useState<string | null>(null)
     const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null)
+
+    const showMessage = (text: string, ok: boolean) => {
+        setMessage({ text, ok })
+        setTimeout(() => setMessage(null), 5000)
+    }
 
     const load = async () => {
         try {
@@ -28,15 +35,13 @@ export function WorldManager({ onSwitch }: Props) {
 
     const handleSwitch = async (name: string) => {
         setSwitching(name)
-        setMessage(null)
         try {
             await switchWorld(name)
-            setMessage({ text: `✅ Map "${name}" activée — serveur en cours de redémarrage...`, ok: true })
-            setTimeout(() => setMessage(null), 5000)
+            showMessage(`✅ Map "${name}" activée — serveur en cours de redémarrage...`, true)
             await load()
             onSwitch()
-        } catch (err) {
-            setMessage({ text: `❌ Erreur lors du switch`, ok: false })
+        } catch {
+            showMessage(`❌ Erreur lors du switch`, false)
         } finally {
             setSwitching(null)
         }
@@ -45,18 +50,47 @@ export function WorldManager({ onSwitch }: Props) {
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
+        if (file.size > 500 * 1024 * 1024) {
+            showMessage('❌ Fichier trop lourd (max 500 Mo) — utilisez SFTP pour les grosses maps', false)
+            e.target.value = ''
+            return
+        }
         setUploading(true)
-        setMessage(null)
         try {
             await uploadWorld(file)
-            setMessage({ text: `✅ Map "${file.name}" uploadée !`, ok: true })
-            setTimeout(() => setMessage(null), 5000)
+            showMessage(`✅ Map "${file.name}" uploadée !`, true)
             await load()
-        } catch (err) {
-            setMessage({ text: `❌ Erreur lors de l'upload`, ok: false })
+        } catch {
+            showMessage(`❌ Erreur lors de l'upload`, false)
         } finally {
             setUploading(false)
             e.target.value = ''
+        }
+    }
+
+    const handleDelete = async (name: string) => {
+        if (!confirm(`Supprimer la map "${name}" ? Cette action est irréversible.`)) return
+        setDeleting(name)
+        try {
+            await deleteWorld(name)
+            showMessage(`✅ Map "${name}" supprimée`, true)
+            await load()
+        } catch {
+            showMessage(`❌ Erreur lors de la suppression`, false)
+        } finally {
+            setDeleting(null)
+        }
+    }
+
+    const handleBackup = async (name: string) => {
+        setBacking(name)
+        try {
+            await backupWorld(name)
+            showMessage(`✅ Backup de "${name}" téléchargé`, true)
+        } catch {
+            showMessage(`❌ Erreur lors du backup`, false)
+        } finally {
+            setBacking(null)
         }
     }
 
@@ -64,10 +98,7 @@ export function WorldManager({ onSwitch }: Props) {
         <div className="panel" style={{ padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h2 style={{ margin: 0, fontSize: '14px' }}>🗺️ MAPS</h2>
-                <label style={{
-                    cursor: uploading ? 'not-allowed' : 'pointer',
-                    opacity: uploading ? 0.5 : 1,
-                }}>
+                <label style={{ cursor: uploading ? 'not-allowed' : 'pointer', opacity: uploading ? 0.5 : 1 }}>
                     <input
                         type="file"
                         accept=".zip"
@@ -121,16 +152,36 @@ export function WorldManager({ onSwitch }: Props) {
                                     </span>
                                 )}
                             </div>
-                            {!world.active && (
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                {!world.active && (
+                                    <button
+                                        className="mc-btn btn-start"
+                                        style={{ fontSize: '14px', padding: '4px 10px' }}
+                                        onClick={() => handleSwitch(world.name)}
+                                        disabled={switching !== null}
+                                    >
+                                        {switching === world.name ? '⏳' : 'Activer'}
+                                    </button>
+                                )}
                                 <button
-                                    className="mc-btn btn-start"
-                                    style={{ fontSize: '14px', padding: '4px 12px' }}
-                                    onClick={() => handleSwitch(world.name)}
-                                    disabled={switching !== null}
+                                    className="mc-btn"
+                                    style={{ fontSize: '14px', padding: '4px 10px', background: '#2a2a6a' }}
+                                    onClick={() => handleBackup(world.name)}
+                                    disabled={backing === world.name}
                                 >
-                                    {switching === world.name ? '⏳...' : 'Activer'}
+                                    {backing === world.name ? '⏳' : '💾 Backup'}
                                 </button>
-                            )}
+                                {!world.active && (
+                                    <button
+                                        className="mc-btn btn-stop"
+                                        style={{ fontSize: '14px', padding: '4px 10px' }}
+                                        onClick={() => handleDelete(world.name)}
+                                        disabled={deleting === world.name}
+                                    >
+                                        {deleting === world.name ? '⏳' : '🗑️'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>
