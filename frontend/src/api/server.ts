@@ -7,6 +7,15 @@ const authHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
 })
 
+const apiFetch = async (url: string, options?: RequestInit): Promise<Response> => {
+  const res = await fetch(url, options)
+  if (res.status === 401) {
+    localStorage.removeItem('token')
+    window.location.href = '/'
+  }
+  return res
+}
+
 export const login = async (username: string, password: string): Promise<string> => {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
@@ -19,31 +28,31 @@ export const login = async (username: string, password: string): Promise<string>
 }
 
 export const fetchStatus = async (): Promise<ServerStatus> => {
-  const res = await fetch(`${BASE_URL}/api/server/status`, { headers: authHeaders() })
+  const res = await apiFetch(`${BASE_URL}/api/server/status`, { headers: authHeaders() })
   if (!res.ok) throw new Error('Erreur status')
   return res.json()
 }
 
 export const fetchPlayers = async (): Promise<Player[]> => {
-  const res = await fetch(`${BASE_URL}/api/server/players`, { headers: authHeaders() })
+  const res = await apiFetch(`${BASE_URL}/api/server/players`, { headers: authHeaders() })
   if (!res.ok) throw new Error('Erreur players')
   return res.json()
 }
 
 export const fetchStats = async (): Promise<SystemStats> => {
-  const res = await fetch(`${BASE_URL}/api/stats`, { headers: authHeaders() })
+  const res = await apiFetch(`${BASE_URL}/api/stats`, { headers: authHeaders() })
   if (!res.ok) throw new Error('Erreur stats')
   return res.json()
 }
 
 export const fetchUptime = async (): Promise<Uptime> => {
-  const res = await fetch(`${BASE_URL}/api/server/uptime`, { headers: authHeaders() })
+  const res = await apiFetch(`${BASE_URL}/api/server/uptime`, { headers: authHeaders() })
   if (!res.ok) throw new Error('Erreur uptime')
   return res.json()
 }
 
 export const startServer = async (): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/server/start`, {
+  const res = await apiFetch(`${BASE_URL}/api/server/start`, {
     method: 'POST',
     headers: authHeaders(),
   })
@@ -51,7 +60,7 @@ export const startServer = async (): Promise<void> => {
 }
 
 export const stopServer = async (): Promise<void> => {
-  const res = await fetch(`${BASE_URL}/api/server/stop`, {
+  const res = await apiFetch(`${BASE_URL}/api/server/stop`, {
     method: 'POST',
     headers: authHeaders(),
   })
@@ -59,7 +68,7 @@ export const stopServer = async (): Promise<void> => {
 }
 
 export const sendCommand = async (command: string): Promise<string> => {
-  const res = await fetch(`${BASE_URL}/api/server/command`, {
+  const res = await apiFetch(`${BASE_URL}/api/server/command`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ command }),
@@ -70,49 +79,49 @@ export const sendCommand = async (command: string): Promise<string> => {
 }
 
 export const fetchWorlds = async (): Promise<World[]> => {
-    const res = await fetch(`${BASE_URL}/api/server/worlds`, { headers: authHeaders() })
-    if (!res.ok) throw new Error('Erreur worlds')
-    return res.json()
+  const res = await apiFetch(`${BASE_URL}/api/server/worlds`, { headers: authHeaders() })
+  if (!res.ok) throw new Error('Erreur worlds')
+  return res.json()
 }
 
 export const switchWorld = async (name: string): Promise<void> => {
-    const res = await fetch(`${BASE_URL}/api/server/worlds/switch`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ name }),
-    })
-    if (!res.ok) throw new Error('Erreur switch')
+  const res = await apiFetch(`${BASE_URL}/api/server/worlds/switch`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error('Erreur switch')
 }
 
 export const uploadWorld = async (file: File): Promise<void> => {
-    const form = new FormData()
-    form.append('world', file)
-    const res = await fetch(`${BASE_URL}/api/server/worlds/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
-        body: form,
-    })
-    if (!res.ok) throw new Error('Erreur upload')
+  const form = new FormData()
+  form.append('world', file)
+  const res = await apiFetch(`${BASE_URL}/api/server/worlds/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+    body: form,
+  })
+  if (!res.ok) throw new Error('Erreur upload')
 }
 
 export const deleteWorld = async (name: string): Promise<void> => {
-    const res = await fetch(`${BASE_URL}/api/server/worlds/${name}`, {
-        method: 'DELETE',
-        headers: authHeaders(),
-    })
-    if (!res.ok) throw new Error('Erreur delete')
+  const res = await apiFetch(`${BASE_URL}/api/server/worlds/${name}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Erreur delete')
 }
 
 export const backupWorld = async (name: string): Promise<void> => {
-    const res = await fetch(`${BASE_URL}/api/server/worlds/${name}/backup`, {
-        headers: authHeaders(),
-    })
-    if (!res.ok) throw new Error('Erreur backup')
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${name}.zip`
-    a.click()
-    URL.revokeObjectURL(url)
+  const res = await apiFetch(`${BASE_URL}/api/server/worlds/${name}/backup`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Erreur backup')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}.zip`
+  a.click()
+  URL.revokeObjectURL(url)
 }
