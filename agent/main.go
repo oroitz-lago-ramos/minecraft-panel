@@ -298,7 +298,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("❌ Socket: %v", err)
 	}
-	os.Chmod(socketPath, 0666)
+	os.Chmod(socketPath, 0660)
 	log.Println("✅ mc-agent démarré sur", socketPath)
 	http.Serve(listener, r)
 }
