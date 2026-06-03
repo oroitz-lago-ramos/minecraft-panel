@@ -36,7 +36,7 @@ jobs:
       - name: Build mc-agent
         run: |
           cd agent
-          GOOS=linux GOARCH=amd64 go build -o mc-agent .
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o mc-agent .
 
       - name: Upload mc-agent artifact
         uses: actions/upload-artifact@v4
@@ -57,11 +57,6 @@ jobs:
       - name: Encode agent binary
         run: echo "AGENT_B64=$(base64 -w 0 ./mc-agent)" >> $GITHUB_ENV
 
-      - name: Tailscale
-        uses: tailscale/github-action@v2
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-
       - name: SSH → deploy
         uses: appleboy/ssh-action@v1
         with:
@@ -71,20 +66,14 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           envs: AGENT_B64
           script: |
-            # 1. Déposer le binaire
             echo "$AGENT_B64" | base64 -d > /home/deploy/minecraft-panel/agent/mc-agent
             chmod +x /home/deploy/minecraft-panel/agent/mc-agent
 
-            # 2. Redeploy containers Docker
             cd ~/vps-infra
-            docker compose pull
             docker compose up -d
 
-            # 3. Restart agent avec le nouveau binaire
             sudo systemctl restart mc-agent
             sleep 2
-
-            # 4. Resync backend → nouveau socket
             docker compose up -d --force-recreate backend
 
             echo "Deploy OK — agent: $(sudo systemctl is-active mc-agent)"
