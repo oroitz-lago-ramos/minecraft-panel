@@ -38,21 +38,11 @@ jobs:
           cd agent
           GOOS=linux GOARCH=amd64 go build -o mc-agent .
 
-      - name: Upload mc-agent artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mc-agent
-          path: agent/mc-agent
-
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Download mc-agent artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: mc-agent
-          path: ./agent
+      - uses: actions/checkout@v4
 
       - name: Tailscale
         uses: tailscale/github-action@v2
@@ -67,7 +57,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "agent/mc-agent"
-          target: "/home/deploy/minecraft-panel/agent/mc-agent"
+          target: "/home/deploy/minecraft-panel/"
           strip_components: 1
 
       - name: SSH → deploy
@@ -79,12 +69,15 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             chmod +x /home/deploy/minecraft-panel/agent/mc-agent
-
+            # 1. Redeploy containers Docker
             cd ~/vps-infra
             docker compose pull
             docker compose up -d
 
+            # 2. Restart agent avec le nouveau binaire
             sudo systemctl restart mc-agent
+
+            # 3. Resync backend → nouveau socket
             sleep 2
             docker compose up -d --force-recreate backend
 
