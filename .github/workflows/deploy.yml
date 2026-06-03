@@ -25,6 +25,7 @@ jobs:
           build-args: |
             VITE_API_URL=https://mc-api.oroitzlagoramos.com
             VITE_WS_URL=wss://mc-api.oroitzlagoramos.com
+
       - name: Build & Push backend
         uses: docker/build-push-action@v5
         with:
@@ -49,7 +50,20 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 2222
           script: |
+            # 1. Pull et redeploy containers Docker
             cd ~/vps-infra
-            git pull origin main
             docker compose pull
             docker compose up -d
+
+            # 2. Rebuild mc-agent
+            cd ~/minecraft-panel/agent
+            git pull origin main
+            go build -o /home/deploy/minecraft-panel/agent/mc-agent .
+            sudo systemctl restart mc-agent
+
+            # 3. Resync backend avec le nouveau socket
+            sleep 2
+            cd ~/vps-infra
+            docker compose up -d --force-recreate backend
+
+            echo "Deploy OK — agent: $(sudo systemctl is-active mc-agent)"

@@ -73,7 +73,7 @@ func main() {
 	// 5. Routes publiques
 	authRoutes := r.Group("/auth")
 	{
-		authRoutes.POST("/login", authHandler.Login)
+		authRoutes.POST("/login", auth.RateLimitLogin(), authHandler.Login)
 		authRoutes.POST("/logout", authHandler.Logout)
 	}
 
