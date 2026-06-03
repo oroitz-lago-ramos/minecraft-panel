@@ -54,8 +54,18 @@ jobs:
           name: mc-agent
           path: ./
 
-      - name: Encode agent binary
-        run: echo "AGENT_B64=$(base64 -w 0 ./mc-agent)" >> $GITHUB_ENV
+      - name: Set permissions
+        run: chmod +x ./mc-agent
+
+      - name: SCP mc-agent
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          source: "mc-agent"
+          target: "/home/deploy/minecraft-panel/agent/"
 
       - name: SSH → deploy
         uses: appleboy/ssh-action@v1
@@ -64,9 +74,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          envs: AGENT_B64
           script: |
-            echo "$AGENT_B64" | base64 -d > /home/deploy/minecraft-panel/agent/mc-agent
             chmod +x /home/deploy/minecraft-panel/agent/mc-agent
 
             cd ~/vps-infra
@@ -77,5 +85,3 @@ jobs:
             docker compose up -d --force-recreate backend
 
             echo "Deploy OK — agent: $(sudo systemctl is-active mc-agent)"
-        env:
-          AGENT_B64: ${{ env.AGENT_B64 }}
