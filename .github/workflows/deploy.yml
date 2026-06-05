@@ -117,9 +117,10 @@ jobs:
             MONGO_ROOT_PASSWORD=$(echo $PANEL | jq -r '.MONGO_ROOT_PASSWORD')
             JWT_SECRET=$(echo $PANEL | jq -r '.JWT_SECRET')
             RCON_PASSWORD=$(echo $PANEL | jq -r '.RCON_PASSWORD')
+            ADMIN_PASSWORD=$(echo $PANEL | jq -r '.ADMIN_PASSWORD')
 
-            printf "MONGO_ROOT_PASSWORD=%s\nJWT_SECRET=%s\nRCON_PASSWORD=%s\n" \
-              "$MONGO_ROOT_PASSWORD" "$JWT_SECRET" "$RCON_PASSWORD" > ~/mc-panel/.env
+            printf "MONGO_ROOT_PASSWORD=%s\nJWT_SECRET=%s\nRCON_PASSWORD=%s\nADMIN_PASSWORD=%s\n" \
+              "$MONGO_ROOT_PASSWORD" "$JWT_SECRET" "$RCON_PASSWORD" "$ADMIN_PASSWORD" > ~/mc-panel/.env
 
             chmod +x ~/minecraft/agent/mc-agent
             sudo systemctl restart mc-agent
