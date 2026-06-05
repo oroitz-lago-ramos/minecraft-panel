@@ -12,8 +12,9 @@ jobs:
 
       - name: Setup WireGuard
         run: |
-          sudo apt install -y wireguard resolvconf
+          sudo apt install -y wireguard
           echo "${{ secrets.WG_CONFIG }}" | sudo tee /etc/wireguard/wg0.conf
+          sudo sed -i '/^DNS/d' /etc/wireguard/wg0.conf
           sudo wg-quick up wg0
           sleep 3
 
@@ -71,8 +72,9 @@ jobs:
 
       - name: Setup WireGuard
         run: |
-          sudo apt install -y wireguard resolvconf
+          sudo apt install -y wireguard
           echo "${{ secrets.WG_CONFIG }}" | sudo tee /etc/wireguard/wg0.conf
+          sudo sed -i '/^DNS/d' /etc/wireguard/wg0.conf
           sudo wg-quick up wg0
           sleep 3
 
