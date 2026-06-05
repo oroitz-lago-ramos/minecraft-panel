@@ -17,9 +17,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const propsFile  = "/home/deploy/minecraft/server.properties"
-const worldsDir  = "/home/deploy/minecraft/worlds"
-const mcDir      = "/home/deploy/minecraft"
+const propsFile = "/home/deploy/minecraft/server.properties"
+const worldsDir = "/home/deploy/minecraft/worlds"
+const mcDir = "/home/deploy/minecraft"
 const activeFile = "/home/deploy/minecraft/worlds/.active"
 
 // activeWorldDir retourne le chemin du dossier "world" actif
@@ -29,8 +29,8 @@ const activeWorldDir = "/home/deploy/minecraft/world"
 // ─── Helpers uptime ──────────────────────────────────────────────────────────
 
 func formatUptime(totalSeconds int64) string {
-	days    := totalSeconds / 86400
-	hours   := (totalSeconds % 86400) / 3600
+	days := totalSeconds / 86400
+	hours := (totalSeconds % 86400) / 3600
 	minutes := (totalSeconds % 3600) / 60
 	seconds := totalSeconds % 60
 	if days > 0 {
@@ -62,7 +62,7 @@ func getMinecraftUptime() string {
 	if err != nil {
 		return "offline"
 	}
-	line  := strings.TrimSpace(string(out))
+	line := strings.TrimSpace(string(out))
 	parts := strings.SplitN(line, "=", 2)
 	if len(parts) != 2 || parts[1] == "" {
 		return "offline"
@@ -114,7 +114,7 @@ func main() {
 	// ── Start / Stop / Status ─────────────────────────────────────────────────
 
 	r.POST("/start", func(c *gin.Context) {
-		if err := exec.Command("systemctl", "start", "minecraft").Run(); err != nil {
+		if err := exec.Command("sudo", "systemctl", "start", "minecraft").Run(); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
@@ -122,7 +122,7 @@ func main() {
 	})
 
 	r.POST("/stop", func(c *gin.Context) {
-		if err := exec.Command("systemctl", "stop", "minecraft").Run(); err != nil {
+		if err := exec.Command("sudo", "systemctl", "stop", "minecraft").Run(); err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
@@ -150,7 +150,7 @@ func main() {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-		lines   := []string{}
+		lines := []string{}
 		scanner := bufio.NewScanner(strings.NewReader(string(out)))
 		for scanner.Scan() {
 			lines = append(lines, scanner.Text())
@@ -159,7 +159,7 @@ func main() {
 	})
 
 	r.GET("/logs/stream", func(c *gin.Context) {
-		cmd    := exec.Command("journalctl", "-u", "minecraft", "-f", "--no-pager")
+		cmd := exec.Command("journalctl", "-u", "minecraft", "-f", "--no-pager")
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
@@ -231,8 +231,8 @@ func main() {
 			saveDir := filepath.Join(worldsDir, active)
 			os.MkdirAll(saveDir, 0755)
 			// Paper 26.1 : on sauvegarde uniquement le dossier "world"
-			src := activeWorldDir                        // /home/deploy/minecraft/world
-			dst := filepath.Join(saveDir, "world")       // worlds/<active>/world
+			src := activeWorldDir                  // /home/deploy/minecraft/world
+			dst := filepath.Join(saveDir, "world") // worlds/<active>/world
 			if err := copyWorld(src, dst); err != nil {
 				c.JSON(500, gin.H{"error": "sauvegarde échouée: " + err.Error()})
 				return
@@ -272,7 +272,7 @@ func main() {
 			return
 		}
 		// Le zip doit contenir un dossier "world/" à la racine (structure Paper 26.1)
-		name    := strings.TrimSuffix(file.Filename, ".zip")
+		name := strings.TrimSuffix(file.Filename, ".zip")
 		destDir := filepath.Join(worldsDir, name)
 		zipPath := destDir + ".zip"
 
@@ -310,7 +310,7 @@ func main() {
 	})
 
 	r.GET("/worlds/:name/backup", func(c *gin.Context) {
-		name     := c.Param("name")
+		name := c.Param("name")
 		worldDir := filepath.Join(worldsDir, name)
 		if _, err := os.Stat(worldDir); os.IsNotExist(err) {
 			c.JSON(404, gin.H{"error": "map introuvable"})
@@ -345,7 +345,7 @@ func main() {
 		ramParts := strings.Fields(string(ramOut))
 		ramUsed, ramTotal := "0", "0"
 		if len(ramParts) == 2 {
-			ramUsed  = ramParts[0]
+			ramUsed = ramParts[0]
 			ramTotal = ramParts[1]
 		}
 
@@ -355,15 +355,15 @@ func main() {
 		diskParts := strings.Fields(string(diskOut))
 		diskUsed, diskTotal := "0", "0"
 		if len(diskParts) == 2 {
-			diskUsed  = diskParts[0]
+			diskUsed = diskParts[0]
 			diskTotal = diskParts[1]
 		}
 
 		c.JSON(200, gin.H{
-			"cpu":       cpu,
-			"ram_used":  ramUsed,
-			"ram_total": ramTotal,
-			"disk_used": diskUsed,
+			"cpu":        cpu,
+			"ram_used":   ramUsed,
+			"ram_total":  ramTotal,
+			"disk_used":  diskUsed,
 			"disk_total": diskTotal,
 		})
 	})
